@@ -3,7 +3,7 @@ package com.ctrip.framework.apollo.portal.spi.ctrip;
 import com.google.gson.Gson;
 
 import com.ctrip.framework.apollo.common.entity.App;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.component.config.PortalConfig;
 import com.ctrip.framework.apollo.portal.entity.bo.ReleaseHistoryBO;
 import com.ctrip.framework.apollo.portal.service.AppService;
@@ -31,7 +31,7 @@ public class CtripMQService implements MQService {
       TIMESTAMP_FORMAT = org.apache.commons.lang.time.FastDateFormat.getInstance("yyyy-MM-dd hh:mm:ss");
   private static final String CONFIG_PUBLISH_NOTIFY_TO_NOC_TOPIC = "ops.noc.record.created";
 
-  private Gson gson = new Gson();
+  private static final Gson GSON = new Gson();
 
   @Autowired
   private AppService appService;
@@ -52,7 +52,7 @@ public class CtripMQService implements MQService {
 
     MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
     converter.setSupportedMediaTypes(
-        Arrays.asList(MediaType.APPLICATION_JSON, MediaType.APPLICATION_OCTET_STREAM));
+        Arrays.asList(MediaType.APPLICATION_JSON_UTF8, MediaType.APPLICATION_OCTET_STREAM));
 
     restTemplate.setMessageConverters(Arrays.asList(converter, new FormHttpMessageConverter()));
 
@@ -82,7 +82,7 @@ public class CtripMQService implements MQService {
     msg.setAppid(appId);
     msg.setAssginee(releaseHistory.getOperator());
     msg.setOperation_time(TIMESTAMP_FORMAT.format(releaseHistory.getReleaseTime()));
-    msg.setDesc(gson.toJson(releaseService.compare(env, releaseHistory.getPreviousReleaseId(),
+    msg.setDesc(GSON.toJson(releaseService.compare(env, releaseHistory.getPreviousReleaseId(),
                                                    releaseHistory.getReleaseId())));
 
     return msg;
@@ -103,7 +103,7 @@ public class CtripMQService implements MQService {
 
   }
 
-  private class PublishMsg {
+  private static class PublishMsg {
 
     private String assginee;
     private String desc;

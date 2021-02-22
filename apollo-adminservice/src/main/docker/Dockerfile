@@ -1,18 +1,19 @@
 # Dockerfile for apollo-adminservice
-# Build with:
-# docker build -t apollo-adminservice .
-# Run with:
-# docker run -p 8090:8090 -d --name apollo-adminservice apollo-adminservice
+# 1. ./scripts/build.sh
+# 2. Build with: mvn docker:build -pl apollo-adminservice
+# 3. Run with: docker run -p 8090:8090 -e SPRING_DATASOURCE_URL="jdbc:mysql://fill-in-the-correct-server:3306/ApolloConfigDB?characterEncoding=utf8" -e SPRING_DATASOURCE_USERNAME=FillInCorrectUser -e SPRING_DATASOURCE_PASSWORD=FillInCorrectPassword -d -v /tmp/logs:/opt/logs --name apollo-adminservice apolloconfig/apollo-adminservice
 
 FROM openjdk:8-jre-alpine
 MAINTAINER ameizi <sxyx2008@163.com>
 
-ENV VERSION 0.8.0
+ENV APOLLO_RUN_MODE "Docker"
+ENV VERSION 1.9.0-SNAPSHOT
+ENV SERVER_PORT 8090
 
-RUN echo "http://mirrors.aliyun.com/alpine/v3.6/main" > /etc/apk/repositories \
-    && echo "http://mirrors.aliyun.com/alpine/v3.6/community" >> /etc/apk/repositories \
+RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main" > /etc/apk/repositories \
+    && echo "http://mirrors.aliyun.com/alpine/v3.8/community" >> /etc/apk/repositories \
     && apk update upgrade \
-    && apk add --no-cache unzip curl bash tzdata \
+    && apk add --no-cache procps unzip curl bash tzdata \
     && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone
 
@@ -20,9 +21,8 @@ ADD apollo-adminservice-${VERSION}-github.zip /apollo-adminservice/apollo-admins
 
 RUN unzip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip -d /apollo-adminservice \
     && rm -rf /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip \
-    && sed -i '$d' /apollo-adminservice/scripts/startup.sh \
-    && echo "tail -f /dev/null" >> /apollo-adminservice/scripts/startup.sh
+    && chmod +x /apollo-adminservice/scripts/startup.sh 
 
-EXPOSE 8090
+EXPOSE $SERVER_PORT
 
 CMD ["/apollo-adminservice/scripts/startup.sh"]

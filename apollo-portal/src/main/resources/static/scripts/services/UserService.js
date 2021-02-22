@@ -1,12 +1,16 @@
-appService.service('UserService', ['$resource', '$q', function ($resource, $q) {
+appService.service('UserService', ['$resource', '$q', 'AppUtil', function ($resource, $q, AppUtil) {
     var user_resource = $resource('', {}, {
         load_user: {
             method: 'GET',
-            url: '/user'
+            url: AppUtil.prefixPath() + '/user'
         },
         find_users: {
             method: 'GET',
-            url: '/users'
+            url: AppUtil.prefixPath() + '/users'
+        },
+        create_or_update_user: {
+            method: 'POST',
+            url: AppUtil.prefixPath() + '/users'
         }
     });
     return {
@@ -36,6 +40,17 @@ appService.service('UserService', ['$resource', '$q', function ($resource, $q) {
                                          d.reject(result);
                                      });
             return d.promise;
+        },
+        createOrUpdateUser: function (user) {
+            var d = $q.defer();
+            user_resource.create_or_update_user({}, user,
+                                     function (result) {
+                                         d.resolve(result);
+                                     },
+                                     function (result) {
+                                         d.reject(result);
+                                     });
+            return d.promise;   
         }
     }
 }]);

@@ -1,24 +1,22 @@
 package com.ctrip.framework.apollo.portal.service;
 
-import com.google.common.base.Objects;
-import com.google.gson.Gson;
-
 import com.ctrip.framework.apollo.common.constants.GsonType;
 import com.ctrip.framework.apollo.common.dto.ItemChangeSets;
 import com.ctrip.framework.apollo.common.dto.ReleaseDTO;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
 import com.ctrip.framework.apollo.portal.constant.TracerEventType;
-import com.ctrip.framework.apollo.portal.entity.model.NamespaceReleaseModel;
 import com.ctrip.framework.apollo.portal.entity.bo.KVEntity;
-import com.ctrip.framework.apollo.portal.entity.vo.ReleaseCompareResult;
 import com.ctrip.framework.apollo.portal.entity.bo.ReleaseBO;
+import com.ctrip.framework.apollo.portal.entity.model.NamespaceGrayDelReleaseModel;
+import com.ctrip.framework.apollo.portal.entity.model.NamespaceReleaseModel;
+import com.ctrip.framework.apollo.portal.entity.vo.ReleaseCompareResult;
 import com.ctrip.framework.apollo.portal.enums.ChangeType;
 import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
 import com.ctrip.framework.apollo.tracer.Tracer;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.google.common.base.Objects;
+import com.google.gson.Gson;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -34,12 +32,15 @@ import java.util.Set;
 @Service
 public class ReleaseService {
 
-  private static final Gson gson = new Gson();
+  private static final Gson GSON = new Gson();
 
-  @Autowired
-  private UserInfoHolder userInfoHolder;
-  @Autowired
-  private AdminServiceAPI.ReleaseAPI releaseAPI;
+  private final UserInfoHolder userInfoHolder;
+  private final AdminServiceAPI.ReleaseAPI releaseAPI;
+
+  public ReleaseService(final UserInfoHolder userInfoHolder, final AdminServiceAPI.ReleaseAPI releaseAPI) {
+    this.userInfoHolder = userInfoHolder;
+    this.releaseAPI = releaseAPI;
+  }
 
   public ReleaseDTO publish(NamespaceReleaseModel model) {
     Env env = model.getEnv();
@@ -56,6 +57,24 @@ public class ReleaseService {
 
     Tracer.logEvent(TracerEventType.RELEASE_NAMESPACE,
                     String.format("%s+%s+%s+%s", appId, env, clusterName, namespaceName));
+
+    return releaseDTO;
+  }
+
+  //gray deletion release
+  public ReleaseDTO publish(NamespaceGrayDelReleaseModel model, String releaseBy) {
+    Env env = model.getEnv();
+    boolean isEmergencyPublish = model.isEmergencyPublish();
+    String appId = model.getAppId();
+    String clusterName = model.getClusterName();
+    String namespaceName = model.getNamespaceName();
+
+    ReleaseDTO releaseDTO = releaseAPI.createGrayDeletionRelease(appId, env, clusterName, namespaceName,
+            model.getReleaseTitle(), model.getReleaseComment(),
+            releaseBy, isEmergencyPublish, model.getGrayDelKeys());
+
+    Tracer.logEvent(TracerEventType.RELEASE_NAMESPACE,
+            String.format("%s+%s+%s+%s", appId, env, clusterName, namespaceName));
 
     return releaseDTO;
   }
@@ -82,7 +101,7 @@ public class ReleaseService {
       release.setBaseInfo(releaseDTO);
 
       Set<KVEntity> kvEntities = new LinkedHashSet<>();
-      Map<String, String> configurations = gson.fromJson(releaseDTO.getConfigurations(), GsonType.CONFIG);
+      Map<String, String> configurations = GSON.fromJson(releaseDTO.getConfigurations(), GsonType.CONFIG);
       Set<Map.Entry<String, String>> entries = configurations.entrySet();
       for (Map.Entry<String, String> entry : entries) {
         kvEntities.add(new KVEntity(entry.getKey(), entry.getValue()));
@@ -107,9 +126,8 @@ public class ReleaseService {
     List<ReleaseDTO> releases = findReleaseByIds(env, releaseIds);
     if (CollectionUtils.isEmpty(releases)) {
       return null;
-    } else {
-      return releases.get(0);
     }
+    return releases.get(0);
 
   }
 
@@ -121,8 +139,12 @@ public class ReleaseService {
     return releaseAPI.loadLatestRelease(appId, env, clusterName, namespaceName);
   }
 
-  public void rollback(Env env, long releaseId) {
-    releaseAPI.rollback(env, releaseId, userInfoHolder.getUser().getUserId());
+  public void rollback(Env env, long releaseId, String operator) {
+    releaseAPI.rollback(env, releaseId, operator);
+  }
+
+  public void rollbackTo(Env env, long releaseId, long toReleaseId, String operator) {
+    releaseAPI.rollbackTo(env, releaseId, toReleaseId, operator);
   }
 
   public ReleaseCompareResult compare(Env env, long baseReleaseId, long toCompareReleaseId) {
@@ -142,9 +164,9 @@ public class ReleaseService {
 
   public ReleaseCompareResult compare(ReleaseDTO baseRelease, ReleaseDTO toCompareRelease) {
     Map<String, String> baseReleaseConfiguration = baseRelease == null ? new HashMap<>() :
-                                                   gson.fromJson(baseRelease.getConfigurations(), GsonType.CONFIG);
+                                                   GSON.fromJson(baseRelease.getConfigurations(), GsonType.CONFIG);
     Map<String, String> toCompareReleaseConfiguration = toCompareRelease == null ? new HashMap<>() :
-                                                        gson.fromJson(toCompareRelease.getConfigurations(),
+                                                        GSON.fromJson(toCompareRelease.getConfigurations(),
                                                                       GsonType.CONFIG);
 
     ReleaseCompareResult compareResult = new ReleaseCompareResult();

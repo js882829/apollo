@@ -2,7 +2,7 @@ package com.ctrip.framework.apollo.portal.entity.model;
 
 
 import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 
 public class NamespaceTextModel implements Verifiable {
@@ -11,7 +11,7 @@ public class NamespaceTextModel implements Verifiable {
   private String env;
   private String clusterName;
   private String namespaceName;
-  private int namespaceId;
+  private long namespaceId;
   private String format;
   private String configText;
 
@@ -53,11 +53,11 @@ public class NamespaceTextModel implements Verifiable {
     this.namespaceName = namespaceName;
   }
 
-  public int getNamespaceId() {
+  public long getNamespaceId() {
     return namespaceId;
   }
 
-  public void setNamespaceId(int namespaceId) {
+  public void setNamespaceId(long namespaceId) {
     this.namespaceId = namespaceId;
   }
 

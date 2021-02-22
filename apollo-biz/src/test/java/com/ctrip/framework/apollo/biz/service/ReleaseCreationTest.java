@@ -1,7 +1,6 @@
 package com.ctrip.framework.apollo.biz.service;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import com.ctrip.framework.apollo.biz.AbstractIntegrationTest;
 import com.ctrip.framework.apollo.biz.entity.GrayReleaseRule;
@@ -19,12 +18,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.jdbc.Sql;
 
-import java.lang.reflect.Type;
 import java.util.Map;
 
 public class ReleaseCreationTest extends AbstractIntegrationTest {
 
-  private Gson gson = new Gson();
+  private static final Gson GSON = new Gson();
 
   @Autowired
   private ReleaseService releaseService;
@@ -36,7 +34,7 @@ public class ReleaseCreationTest extends AbstractIntegrationTest {
   private String testApp = "test";
   private String testNamespace = "application";
   private String operator = "apollo";
-  private Pageable pageable = new PageRequest(0, 10);
+  private Pageable pageable = PageRequest.of(0, 10);
 
   @Test
   @Sql(scripts = "/sql/release-creation-test.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
@@ -494,7 +492,7 @@ public class ReleaseCreationTest extends AbstractIntegrationTest {
   }
 
   private Map<String, String> parseConfiguration(String configuration) {
-    return gson.fromJson(configuration, GsonType.CONFIG);
+    return GSON.fromJson(configuration, GsonType.CONFIG);
   }
 
 }

@@ -7,15 +7,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.servlet.FilterChain;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,7 +49,7 @@ public class ConsumerAuthenticationFilterTest {
     String someToken = "someToken";
     Long someConsumerId = 1L;
 
-    when(request.getHeader("Authorization")).thenReturn(someToken);
+    when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn(someToken);
     when(consumerAuthUtil.getConsumerId(someToken)).thenReturn(someConsumerId);
 
     authenticationFilter.doFilter(request, response, filterChain);
@@ -62,7 +63,7 @@ public class ConsumerAuthenticationFilterTest {
   public void testAuthFailed() throws Exception {
     String someInvalidToken = "someInvalidToken";
 
-    when(request.getHeader("Authorization")).thenReturn(someInvalidToken);
+    when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn(someInvalidToken);
     when(consumerAuthUtil.getConsumerId(someInvalidToken)).thenReturn(null);
 
     authenticationFilter.doFilter(request, response, filterChain);

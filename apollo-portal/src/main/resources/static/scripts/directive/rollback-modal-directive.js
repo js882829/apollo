@@ -1,9 +1,9 @@
 directive_module.directive('rollbackmodal', rollbackModalDirective);
 
-function rollbackModalDirective(AppUtil, EventManager, ReleaseService, toastr) {
+function rollbackModalDirective($translate, AppUtil, EventManager, ReleaseService, toastr) {
     return {
         restrict: 'E',
-        templateUrl: '../../views/component/rollback-modal.html',
+        templateUrl: AppUtil.prefixPath() + '/views/component/rollback-modal.html',
         transclude: true,
         replace: true,
         scope: {
@@ -13,37 +13,46 @@ function rollbackModalDirective(AppUtil, EventManager, ReleaseService, toastr) {
         },
         link: function (scope) {
 
+            scope.isRollbackTo = false;
             scope.showRollbackAlertDialog = showRollbackAlertDialog;
 
             EventManager.subscribe(EventManager.EventType.PRE_ROLLBACK_NAMESPACE,
-            function (context) {
-                preRollback(context.namespace);
-            });
+                function (context) {
+                    if (context.toReleaseId) {
+                        preRollbackTo(context.namespace, context.toReleaseId);
+                    } else {
+                        preRollback(context.namespace);
+                    }
+                });
 
             EventManager.subscribe(EventManager.EventType.ROLLBACK_NAMESPACE,
-                                   function (context) {
-                                       rollback();
-                                   });
+                function (context) {
+                    if (context.toReleaseId) {
+                        rollbackTo(context.toReleaseId);
+                    } else {
+                        rollback();
+                    }
+                });
 
             function preRollback(namespace) {
                 scope.toRollbackNamespace = namespace;
                 //load latest two active releases
                 ReleaseService.findActiveReleases(scope.appId,
-                                                  scope.env,
-                                                  scope.cluster,
-                                                  scope.toRollbackNamespace.baseInfo.namespaceName,
-                                                  0, 2)
+                    scope.env,
+                    scope.cluster,
+                    scope.toRollbackNamespace.baseInfo.namespaceName,
+                    0, 2)
                     .then(function (result) {
                         if (result.length <= 1) {
-                            toastr.error("没有可以回滚的发布历史");
+                            toastr.error($translate.instant('Rollback.NoRollbackList'));
                             return;
                         }
                         scope.toRollbackNamespace.firstRelease = result[0];
                         scope.toRollbackNamespace.secondRelease = result[1];
 
                         ReleaseService.compare(scope.env,
-                                               scope.toRollbackNamespace.firstRelease.id,
-                                               scope.toRollbackNamespace.secondRelease.id)
+                            scope.toRollbackNamespace.firstRelease.id,
+                            scope.toRollbackNamespace.secondRelease.id)
                             .then(function (result) {
                                 scope.toRollbackNamespace.releaseCompareResult = result.changes;
 
@@ -52,21 +61,78 @@ function rollbackModalDirective(AppUtil, EventManager, ReleaseService, toastr) {
                     });
             }
 
+            function preRollbackTo(namespace, toReleaseId) {
+                scope.isRollbackTo = true;
+                scope.toRollbackNamespace = namespace;
+                scope.toRollbackNamespace.isPropertiesFormat = namespace.format == 'properties';
+
+                ReleaseService.findLatestActiveRelease(scope.appId,
+                    scope.env,
+                    namespace.baseInfo.clusterName,
+                    namespace.baseInfo.namespaceName)
+                    .then(function (result) {
+                        if (!result) {
+                            toastr.error($translate.instant('Rollback.NoRollbackList'));
+                            return;
+                        }
+                        scope.toRollbackNamespace.firstRelease = result;
+
+                        ReleaseService.get(scope.env,
+                            toReleaseId)
+                            .then(function (result) {
+                                scope.toRollbackNamespace.secondRelease = result;
+
+                                if (scope.toRollbackNamespace.firstRelease.id == scope.toRollbackNamespace.secondRelease.id) {
+                                    toastr.error($translate.instant('Rollback.SameAsCurrentRelease'));
+                                    return;
+                                }
+
+                                ReleaseService.compare(scope.env,
+                                    scope.toRollbackNamespace.firstRelease.id,
+                                    scope.toRollbackNamespace.secondRelease.id)
+                                    .then(function (result) {
+                                        scope.toRollbackNamespace.releaseCompareResult = result.changes;
+
+                                        AppUtil.showModal('#rollbackModal');
+                                    })
+
+                            })
+
+                    })
+            }
+
             function rollback() {
                 scope.toRollbackNamespace.rollbackBtnDisabled = true;
                 ReleaseService.rollback(scope.env,
-                                        scope.toRollbackNamespace.firstRelease.id)
+                    scope.toRollbackNamespace.firstRelease.id)
                     .then(function (result) {
-                        toastr.success("回滚成功");
+                        toastr.success($translate.instant('Rollback.RollbackSuccessfully'));
                         scope.toRollbackNamespace.rollbackBtnDisabled = false;
                         AppUtil.hideModal('#rollbackModal');
                         EventManager.emit(EventManager.EventType.REFRESH_NAMESPACE,
-                                          {
-                                              namespace:scope.toRollbackNamespace
-                                          });
+                            {
+                                namespace: scope.toRollbackNamespace
+                            });
                     }, function (result) {
                         scope.toRollbackNamespace.rollbackBtnDisabled = false;
-                        AppUtil.showErrorMsg(result, "回滚失败");
+                        AppUtil.showErrorMsg(result, $translate.instant('Rollback.RollbackFailed'));
+                    })
+            }
+
+            function rollbackTo(toReleaseId) {
+                scope.toRollbackNamespace.rollbackBtnDisabled = true;
+                ReleaseService.rollbackTo(scope.env,
+                    scope.toRollbackNamespace.firstRelease.id,
+                    toReleaseId
+                    )
+                    .then(function (result) {
+                        toastr.success($translate.instant('Rollback.RollbackSuccessfully'));
+                        scope.toRollbackNamespace.rollbackBtnDisabled = false;
+                        AppUtil.hideModal('#rollbackModal');
+                        EventManager.emit(EventManager.EventType.REFRESH_RELEASE_HISTORY, {releaseId: toReleaseId});
+                    }, function (result) {
+                        scope.toRollbackNamespace.rollbackBtnDisabled = false;
+                        AppUtil.showErrorMsg(result, $translate.instant('Rollback.RollbackFailed'));
                     })
             }
 

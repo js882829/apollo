@@ -1,5 +1,11 @@
 package com.ctrip.framework.apollo.configservice.controller;
 
+import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
+import com.ctrip.framework.apollo.biz.grayReleaseRule.GrayReleaseRulesHolder;
+import com.ctrip.framework.apollo.biz.message.Topics;
+import com.ctrip.framework.apollo.configservice.util.NamespaceUtil;
+import com.ctrip.framework.apollo.configservice.util.WatchKeysUtil;
+import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -7,33 +13,23 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-
-import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
-import com.ctrip.framework.apollo.biz.grayReleaseRule.GrayReleaseRulesHolder;
-import com.ctrip.framework.apollo.biz.message.Topics;
-import com.ctrip.framework.apollo.configservice.util.NamespaceUtil;
-import com.ctrip.framework.apollo.configservice.util.WatchKeysUtil;
-import com.ctrip.framework.apollo.core.dto.ApolloConfig;
-
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -65,13 +61,13 @@ public class ConfigFileControllerTest {
   Multimap<String, String> watchedKeys2CacheKey;
   Multimap<String, String> cacheKey2WatchedKeys;
 
+  private static final Gson GSON = new Gson();
+
   @Before
   public void setUp() throws Exception {
-    configFileController = new ConfigFileController();
-    ReflectionTestUtils.setField(configFileController, "configController", configController);
-    ReflectionTestUtils.setField(configFileController, "watchKeysUtil", watchKeysUtil);
-    ReflectionTestUtils.setField(configFileController, "namespaceUtil", namespaceUtil);
-    ReflectionTestUtils.setField(configFileController, "grayReleaseRulesHolder", grayReleaseRulesHolder);
+    configFileController = new ConfigFileController(
+        configController, namespaceUtil, watchKeysUtil, grayReleaseRulesHolder
+    );
 
     someAppId = "someAppId";
     someClusterName = "someClusterName";
@@ -150,7 +146,7 @@ public class ConfigFileControllerTest {
   public void testQueryConfigAsJson() throws Exception {
     String someKey = "someKey";
     String someValue = "someValue";
-    Gson gson = new Gson();
+
     Type responseType = new TypeToken<Map<String, String>>(){}.getType();
 
     String someWatchKey = "someWatchKey";
@@ -173,14 +169,13 @@ public class ConfigFileControllerTest {
                 someClientIp, someRequest, someResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(configurations, gson.fromJson(response.getBody(), responseType));
+    assertEquals(configurations, GSON.fromJson(response.getBody(), responseType));
   }
 
   @Test
   public void testQueryConfigWithGrayRelease() throws Exception {
     String someKey = "someKey";
     String someValue = "someValue";
-    Gson gson = new Gson();
     Type responseType = new TypeToken<Map<String, String>>(){}.getType();
 
     Map<String, String> configurations =
@@ -210,7 +205,7 @@ public class ConfigFileControllerTest {
             someRequest, someResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(configurations, gson.fromJson(response.getBody(), responseType));
+    assertEquals(configurations, GSON.fromJson(response.getBody(), responseType));
     assertTrue(watchedKeys2CacheKey.isEmpty());
     assertTrue(cacheKey2WatchedKeys.isEmpty());
   }

@@ -7,6 +7,7 @@ import com.ctrip.framework.apollo.biz.service.AppService;
 import com.ctrip.framework.apollo.common.dto.AppDTO;
 import com.ctrip.framework.apollo.common.entity.App;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +21,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 
 import java.util.Map;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 public class ControllerIntegrationExceptionTest extends AbstractControllerTest {
@@ -31,15 +32,25 @@ public class ControllerIntegrationExceptionTest extends AbstractControllerTest {
   @Mock
   AdminService adminService;
 
+  private Object realAdminService;
+
   @Autowired
   AppService appService;
 
-  Gson gson = new Gson();
+  private static final Gson GSON = new Gson();
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
+
+    realAdminService = ReflectionTestUtils.getField(appController, "adminService");
+
     ReflectionTestUtils.setField(appController, "adminService", adminService);
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    ReflectionTestUtils.setField(appController, "adminService", realAdminService);
   }
 
   private String getBaseAppUrl() {
@@ -57,7 +68,7 @@ public class ControllerIntegrationExceptionTest extends AbstractControllerTest {
       restTemplate.postForEntity(getBaseAppUrl(), dto, AppDTO.class);
     } catch (HttpStatusCodeException e) {
       @SuppressWarnings("unchecked")
-      Map<String, String> attr = gson.fromJson(e.getResponseBodyAsString(), Map.class);
+      Map<String, String> attr = GSON.fromJson(e.getResponseBodyAsString(), Map.class);
       Assert.assertEquals("save failed", attr.get("message"));
     }
     App savedApp = appService.findOne(dto.getAppId());

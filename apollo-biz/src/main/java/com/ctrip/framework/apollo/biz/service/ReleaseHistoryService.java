@@ -1,12 +1,9 @@
 package com.ctrip.framework.apollo.biz.service;
 
-import com.google.gson.Gson;
-
 import com.ctrip.framework.apollo.biz.entity.Audit;
 import com.ctrip.framework.apollo.biz.entity.ReleaseHistory;
 import com.ctrip.framework.apollo.biz.repository.ReleaseHistoryRepository;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.google.gson.Gson;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -14,18 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
 @Service
 public class ReleaseHistoryService {
-  private Gson gson = new Gson();
+  private static final Gson GSON = new Gson();
 
-  @Autowired
-  private ReleaseHistoryRepository releaseHistoryRepository;
-  @Autowired
-  private AuditService auditService;
+  private final ReleaseHistoryRepository releaseHistoryRepository;
+  private final AuditService auditService;
+
+  public ReleaseHistoryService(
+      final ReleaseHistoryRepository releaseHistoryRepository,
+      final AuditService auditService) {
+    this.releaseHistoryRepository = releaseHistoryRepository;
+    this.auditService = auditService;
+  }
 
 
   public Page<ReleaseHistory> findReleaseHistoriesByNamespace(String appId, String clusterName,
@@ -43,6 +46,10 @@ public class ReleaseHistoryService {
     return releaseHistoryRepository.findByPreviousReleaseIdAndOperationOrderByIdDesc(previousReleaseId, operation, page);
   }
 
+  public Page<ReleaseHistory> findByReleaseIdAndOperationInOrderByIdDesc(long releaseId, Set<Integer> operations, Pageable page) {
+    return releaseHistoryRepository.findByReleaseIdAndOperationInOrderByIdDesc(releaseId, operations, page);
+  }
+
   @Transactional
   public ReleaseHistory createReleaseHistory(String appId, String clusterName, String
       namespaceName, String branchName, long releaseId, long previousReleaseId, int operation,
@@ -58,7 +65,7 @@ public class ReleaseHistoryService {
     if (operationContext == null) {
       releaseHistory.setOperationContext("{}"); //default empty object
     } else {
-      releaseHistory.setOperationContext(gson.toJson(operationContext));
+      releaseHistory.setOperationContext(GSON.toJson(operationContext));
     }
     releaseHistory.setDataChangeCreatedTime(new Date());
     releaseHistory.setDataChangeCreatedBy(operator);

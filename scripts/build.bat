@@ -19,6 +19,9 @@ set pro_meta="http://yetAnotherIp:8080"
 set META_SERVERS_OPTS=-Ddev_meta=%dev_meta% -Dfat_meta=%fat_meta% -Duat_meta=%uat_meta% -Dpro_meta=%pro_meta%
 
 rem =============== Please do not modify the following content =============== 
+rem go to script directory
+cd "%~dp0"
+
 cd ..
 
 rem package config-service and admin-service
@@ -30,14 +33,8 @@ echo "==== building config-service and admin-service finished ===="
 
 echo "==== starting to build portal ===="
 
-call mvn clean package -DskipTests -pl apollo-portal -am -Dapollo_profile=github -Dspring_datasource_url=%apollo_portal_db_url% -Dspring_datasource_username=%apollo_portal_db_username% -Dspring_datasource_password=%apollo_portal_db_password% %META_SERVERS_OPTS%
+call mvn clean package -DskipTests -pl apollo-portal -am -Dapollo_profile=github,auth -Dspring_datasource_url=%apollo_portal_db_url% -Dspring_datasource_username=%apollo_portal_db_username% -Dspring_datasource_password=%apollo_portal_db_password% %META_SERVERS_OPTS%
 
 echo "==== building portal finished ===="
-
-echo "==== starting to build client ===="
-
-call mvn clean install -DskipTests -pl apollo-client -am %META_SERVERS_OPTS%
-
-echo "==== building client finished ===="
 
 pause

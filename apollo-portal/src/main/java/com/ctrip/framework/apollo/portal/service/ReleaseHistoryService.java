@@ -1,19 +1,16 @@
 package com.ctrip.framework.apollo.portal.service;
 
-import com.google.gson.Gson;
-
 import com.ctrip.framework.apollo.common.constants.GsonType;
 import com.ctrip.framework.apollo.common.dto.PageDTO;
 import com.ctrip.framework.apollo.common.dto.ReleaseDTO;
 import com.ctrip.framework.apollo.common.dto.ReleaseHistoryDTO;
 import com.ctrip.framework.apollo.common.entity.EntityPair;
 import com.ctrip.framework.apollo.common.utils.BeanUtils;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
 import com.ctrip.framework.apollo.portal.entity.bo.ReleaseHistoryBO;
 import com.ctrip.framework.apollo.portal.util.RelativeDateFormat;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.google.gson.Gson;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,13 +24,15 @@ import java.util.Set;
 @Service
 public class ReleaseHistoryService {
 
-  private Gson gson = new Gson();
+  private final static Gson GSON = new Gson();
+  
+  private final AdminServiceAPI.ReleaseHistoryAPI releaseHistoryAPI;
+  private final ReleaseService releaseService;
 
-
-  @Autowired
-  private AdminServiceAPI.ReleaseHistoryAPI releaseHistoryAPI;
-  @Autowired
-  private ReleaseService releaseService;
+  public ReleaseHistoryService(final AdminServiceAPI.ReleaseHistoryAPI releaseHistoryAPI, final ReleaseService releaseService) {
+    this.releaseHistoryAPI = releaseHistoryAPI;
+    this.releaseService = releaseService;
+  }
 
 
   public ReleaseHistoryBO findLatestByReleaseIdAndOperation(Env env, long releaseId, int operation){
@@ -118,8 +117,9 @@ public class ReleaseHistoryService {
     if (release != null) {
       bo.setReleaseTitle(release.getName());
       bo.setReleaseComment(release.getComment());
+      bo.setReleaseAbandoned(release.isAbandoned());
 
-      Map<String, String> configuration = gson.fromJson(release.getConfigurations(), GsonType.CONFIG);
+      Map<String, String> configuration = GSON.fromJson(release.getConfigurations(), GsonType.CONFIG);
       List<EntityPair<String>> items = new ArrayList<>(configuration.size());
       for (Map.Entry<String, String> entry : configuration.entrySet()) {
         EntityPair<String> entityPair = new EntityPair<>(entry.getKey(), entry.getValue());
